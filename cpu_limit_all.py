@@ -1,10 +1,9 @@
-import os, re, time
+import os, re, time, json
 
 prog_log = "progs.txt"
+settings_file = "settings.ini"
 limited_pids = {}
 excluded_pids = {}
-limit = 20
-interval = 5 # secs
 
 child_pid = None
 child_processes = 0
@@ -17,6 +16,11 @@ loop = True
 while(loop):
 	
 	os.system(f"ps aux > {prog_log}")
+
+	with open(settings_file) as file:
+		settings = json.load(file)
+		limit = float(settings["limit"])		# % cpu
+		interval = float(settings["interval"])	# seconds
 
 	with open(prog_log) as file:
 		lines = file.readlines()[1:]
@@ -41,7 +45,7 @@ while(loop):
 
 					# mark pid with associated command to avoid repeated limits
 					limited_pids[process_pid] = process_command
-					print("limit:", process_pid, process_cpu, process_command)
+					print(f"limit process: pid={process_pid}, cpu_usage={process_cpu}%, command={process_command}")
 					
 					# create child process to handle cpulimit
 					child_pid = os.fork()
@@ -57,11 +61,11 @@ while(loop):
 					if child_pid == 0:
 						loop = False
 						break
-	
-	# kill child processes assigned to PIDs no longer active
 
 	# make copy so we can make changes as we iterate through it -- improve this later
 	excluded_pids_ = excluded_pids.copy()
+
+	# kill child processes assigned to PIDs no longer active
 	for pid, assigned_pid in excluded_pids_.items():
 		if type(assigned_pid) == int and not assigned_pid in current_pids:
 			# kill the child process via pid			
@@ -77,8 +81,7 @@ while(loop):
 			limited_pids.pop(assigned_pid)
 
 				
-	# print("\n\n")
-		
+	# print("\n\n")			
 	time.sleep(interval)
 	
 # execute if child
