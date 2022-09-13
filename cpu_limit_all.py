@@ -27,6 +27,7 @@ while(loop):
 		settings = json.load(file)
 		limit = float(settings["limit"])		# % cpu
 		interval = float(settings["interval"])	# seconds
+		targeted_limits = settings["targeted_limits"]
 		exempted_programs = settings["exempted_programs"] # execution commmand
 
 		if not initial_limit:
@@ -68,8 +69,14 @@ while(loop):
 		
 		current_pids.append(process_pid)
 
-		if process_cpu > limit:
-			if (not process_pid in excluded_pids) and not process_command in exempted_programs:
+		targeted_limit = None
+		process_executable_name = os.path.basename(process_command)
+		if process_executable_name in targeted_limits:
+			targeted_limit = targeted_limits[process_executable_name]
+
+		if process_cpu > limit or targeted_limit:
+			if (not process_pid in excluded_pids) and not \
+				os.path.basename(process_command) in exempted_programs:
 				# if pid has not been marked as 'limited' or it has been
 				# marked as 'limited' but now points to another program
 				if (not process_pid in limited_pids) or \
@@ -77,7 +84,8 @@ while(loop):
 
 					# mark pid with associated command to avoid repeated limits
 					limited_pids[process_pid] = process_command
-					print(f"limit process: pid={process_pid}, cpu_usage={process_cpu}%, command={process_command} to {limit}% usage")
+					active_limit = targeted_limit if targeted_limit else limit
+					print(f"limit process: pid={process_pid}, cpu_usage={process_cpu}%, command={process_command} to {active_limit}% usage")
 					
 					# create child process to handle cpulimit
 					child_pid = os.fork()
@@ -92,6 +100,8 @@ while(loop):
 					# execute if child
 					if child_pid == 0:
 						loop = False
+						if targeted_limit:
+							limit = targeted_limit
 						break
 
 	# make copy so we can make changes as we iterate through it -- improve this later
