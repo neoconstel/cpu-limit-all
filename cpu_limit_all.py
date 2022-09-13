@@ -26,13 +26,27 @@ while(loop):
 
 		if not initial_limit:
 			initial_limit = limit
+			print(f"Program started. Set to limit processes to {limit}% cpu usage\n")
 
-	# if "limit" setting has been changed since start of program, kill
+	# if "limit" setting has been changed, reset
 	# everything and start afresh
 	if initial_limit and limit != initial_limit:
-		print("Limit setting changed. Killing program and restarting...")
-		os.system("nohup python3 cpu_limit_all.py &")
-		os.system(f"kill -9 {main_pid}")
+		print(f"Limit setting changed from {initial_limit}% to {limit}%. Resetting all process limits...")
+		initial_limit = limit
+
+		# kill all cpulimit instances
+		os.system(f"killall -9 cpulimit")
+		
+		# kill all child processes
+		for pid, assigned_pid in excluded_pids.items():
+			if type(assigned_pid) == int:
+				os.system(f"kill -9 {pid}")
+				print(f"Resetting limits: killed child process (pid={pid})")
+
+		# reset limited and excluded pids, and child count
+		limited_pids = {}
+		excluded_pids = {main_pid: True}
+		child_processes = 0
 
 
 	with open(prog_log) as file:
@@ -58,7 +72,7 @@ while(loop):
 
 					# mark pid with associated command to avoid repeated limits
 					limited_pids[process_pid] = process_command
-					print(f"limit process: pid={process_pid}, cpu_usage={process_cpu}%, command={process_command}")
+					print(f"limit process: pid={process_pid}, cpu_usage={process_cpu}%, command={process_command} to {limit}% usage")
 					
 					# create child process to handle cpulimit
 					child_pid = os.fork()
