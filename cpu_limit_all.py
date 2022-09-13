@@ -1,7 +1,11 @@
 import os, re, time, json
 
-prog_log = "progs.txt"
-settings_file = "settings.ini"
+BASEDIR = os.path.dirname(os.path.realpath(__file__))
+# print(f"Script Directory: {BASEDIR}")
+
+process_log = os.path.join(BASEDIR, "process_dump")
+settings_file = os.path.join(BASEDIR, "settings.ini")
+
 limited_pids = {}
 excluded_pids = {}
 
@@ -17,7 +21,7 @@ initial_limit = None
 loop = True
 while(loop):
 	
-	os.system(f"ps aux > {prog_log}")
+	os.system(f"ps aux > {process_log}")
 
 	with open(settings_file) as file:
 		settings = json.load(file)
@@ -36,7 +40,7 @@ while(loop):
 
 		# kill all cpulimit instances
 		os.system(f"killall -9 cpulimit")
-		
+
 		# kill all child processes
 		for pid, assigned_pid in excluded_pids.items():
 			if type(assigned_pid) == int:
@@ -49,7 +53,7 @@ while(loop):
 		child_processes = 0
 
 
-	with open(prog_log) as file:
+	with open(process_log) as file:
 		lines = file.readlines()[1:]
 	
 	current_pids = []
@@ -117,3 +121,4 @@ if child_pid == 0:
 	print(f"program fork (pid={instance_pid}) limiting process {process_command} having pid: {process_pid}\n")
 	# limit the process
 	os.system(f"cpulimit -p {process_pid} -l {limit}")
+
