@@ -12,6 +12,8 @@ process_pid = None
 main_pid = os.getpid()
 excluded_pids[main_pid] = True
 
+initial_limit = None
+
 loop = True
 while(loop):
 	
@@ -21,6 +23,17 @@ while(loop):
 		settings = json.load(file)
 		limit = float(settings["limit"])		# % cpu
 		interval = float(settings["interval"])	# seconds
+
+		if not initial_limit:
+			initial_limit = limit
+
+	# if "limit" setting has been changed since start of program, kill
+	# everything and start afresh
+	if initial_limit and limit != initial_limit:
+		print("Limit setting changed. Killing program and restarting...")
+		os.system("nohup python3 cpu_limit_all.py &")
+		os.system(f"kill -9 {main_pid}")
+
 
 	with open(prog_log) as file:
 		lines = file.readlines()[1:]
