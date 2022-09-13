@@ -27,6 +27,7 @@ while(loop):
 		settings = json.load(file)
 		limit = float(settings["limit"])		# % cpu
 		interval = float(settings["interval"])	# seconds
+		exempted_programs = settings["exempted_programs"] # execution commmand
 
 		if not initial_limit:
 			initial_limit = limit
@@ -68,7 +69,7 @@ while(loop):
 		current_pids.append(process_pid)
 
 		if process_cpu > limit:
-			if not process_pid in excluded_pids:
+			if (not process_pid in excluded_pids) and not process_command in exempted_programs:
 				# if pid has not been marked as 'limited' or it has been
 				# marked as 'limited' but now points to another program
 				if (not process_pid in limited_pids) or \
