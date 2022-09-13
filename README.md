@@ -17,4 +17,6 @@ You can even set it as a default startup program as I did, so it runs in the bac
 
 - targeted_limits: executable name of programs which should use a targeted limit instead of the general limit
 > (e.g __"vlc": 5__ will limit vlc to 5% cpu irrespective of the value of the general limit)
+
+__NOTE: If a process executable name is included in both targeted_limits and exempted_programs, it would be exempted entirely__
  
