@@ -1,14 +1,17 @@
 import os, re, time
 
 prog_log = "progs.txt"
-limited_pids = []
-excluded_pids = []
-limit = 2.0
+limited_pids = {}
+excluded_pids = {}
+limit = 20
 interval = 5 # secs
 
 child_pid = None
 child_processes = 0
 process_pid = None
+
+main_pid = os.getpid()
+excluded_pids[main_pid] = True
 
 loop = True
 while(loop):
@@ -26,23 +29,31 @@ while(loop):
 		process_cpu = float(process_info[2])
 		process_command = process_info[10]
 		
-		if process_cpu > limit and not (process_pid in limited_pids + excluded_pids):
-			limited_pids.append(process_pid)
-			print("limit:", process_pid, process_cpu, process_command)
-			
-			# create child process to handle cpulimit
-			child_pid = os.fork()
-			
-			# execute if parent
-			if child_pid > 0:
-				excluded_pids.append(child_pid)
-				child_processes += 1
-				print(f"\nChild processes: {child_processes}\n\n")
-			
-			# execute if child
-			if child_pid == 0:
-				loop = False
-				break
+		if process_cpu > limit:
+			if not process_pid in excluded_pids:
+				# if pid has not been marked as 'limited' or it has been
+				# marked as 'limited' but now points to another program
+				if (not process_pid in limited_pids) or \
+					limited_pids[process_pid] != process_command:
+
+					# mark pid with associated command to avoid repeated limits
+					limited_pids[process_pid] = process_command
+					print("limit:", process_pid, process_cpu, process_command)
+					
+					# create child process to handle cpulimit
+					child_pid = os.fork()
+					
+					# execute if parent
+					if child_pid > 0:
+						# mark child process for exclusion to avoid a chain of infinite limits
+						excluded_pids[child_pid] = True
+						child_processes += 1
+						print(f"\nChild processes: {child_processes}\n\n")
+					
+					# execute if child
+					if child_pid == 0:
+						loop = False
+						break
 				
 	# print("\n\n")
 		
